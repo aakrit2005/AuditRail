@@ -1,153 +1,169 @@
-# AudiTrail
+# AuditTrail — Field Audit Management Dashboard
 
-Full loop: login → manager dashboard → auditor workspace → checklist form →
-submit → shows back up on the dashboard. Built on top of the DB layer from
-the earlier session (models/admin unchanged) plus templates, views, urls,
-form handling, and auth.
+AuditTrail is a web-based field audit management system designed to manage auditors, locations, audit assignments, checklist-based inspections, compliance scoring, flagged issues, and audit reporting.
 
-## Set up
+The project models a real-world audit workflow where managers assign audits to auditors, auditors complete structured checklists, and managers can monitor compliance and audit status from a central dashboard.
 
-```bash
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py seed_data       # wipes and reloads demo data + login users
-python manage.py runserver
-```
+#In Action
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/b946504c-7e6b-45ba-9e59-ea3480241190" />
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/cfc15848-099f-464a-8603-981cd910e546" />
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/a53c99ea-54da-45c1-b534-6a95c85b2779" />
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/dfe1e5af-7481-495a-ae7d-79ed8d54aec9" />
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/108c3013-fb27-4a5c-8b23-cb9c90f4369f" />
 
-Open http://127.0.0.1:8000/ — you'll land on the login page.
 
-### Demo logins
 
-Every account uses the password `auditrail123`.
+## Features
 
-| Username | Role    | Lands on              |
-|----------|---------|------------------------|
-| manager  | manager | Dashboard, can view any auditor's workspace |
-| priya    | auditor | Own workspace only |
-| marcus   | auditor | Own workspace only |
-| elena    | auditor | Own workspace only |
-| raj      | auditor | Own workspace only |
-| neha     | auditor | Own workspace only |
-| vikram   | auditor | Own workspace only |
+### Manager Dashboard
 
-Want your own admin login too? `python manage.py createsuperuser` still
-works independently — the demo accounts above are separate.
+- Overview of audit programme status
+- Total, completed, in-progress, and pending audits
+- Compliance score overview
+- Flagged issue monitoring
+- Audit activity table
+- Auditor assignment overview
 
-### Your logo
+### Audit Management
 
-`base.html` references `static/audits/images/logo_nav_white.png`. That file
-wasn't in the upload, so drop your actual logo at
-`static/audits/images/logo_nav_white.png` and it'll pick up automatically —
-until then the nav just shows a broken image icon, nothing else breaks.
+- Assign auditors to locations
+- Create and manage audits
+- Track audit status
+- View individual audit reports
+- Track due dates and completion dates
 
-## URL map
+### Audit Submission
 
-| URL                     | View               | Notes |
-|--------------------------|--------------------|-------|
-| `/login/`, `/logout/`    | Django built-in    | `LoginView`/`LogoutView`, template `audits/login.html` |
-| `/`                      | `manager_dashboard`| Managers only — auditors get bounced to their own workspace |
-| `/audits/<auditor_id>/`  | `auditor_workspace`| Auditors can only view their own id; managers can view any |
-| `/audit/<audit_code>/`   | `audit_detail`     | Read-only report |
-| `/form/<audit_code>/`    | `audit_form`       | GET shows checklist, POST saves it (the one write path) |
+- Checklist-based audit forms
+- 1–5 scoring system
+- Live compliance score calculation
+- Automatic flagging of low-scoring items
+- Remarks for audit findings
+- Photo evidence support
+- Save audits as drafts
+- Submit completed audits
 
-Every view is `@login_required`. Role and per-object access checks live in
-`_is_manager()` / the `if not _is_manager(...)` guards at the top of each
-view in `audits/views.py` — not in middleware — so it's all in one place to
-read.
+### Access Control
 
-## What the form submit actually does
+- Manager and auditor workflows
+- Login and authentication
+- Auditors can access their assigned audits
+- Managers can manage the overall audit programme
 
-Two submit buttons, same `<form>`: `name="save_draft"` sets the audit to
-`in-progress`; `name="submit_report"` sets it to `completed` and stamps
-`submitted_at`. Either way, only checklist items you actually touched
-(score, remark, or photo) get an `AuditResponse` row — items left blank on
-a draft don't get a row created just because they rendered on the page.
+## Tech Stack
 
-One thing worth knowing: `AuditResponse.save()` (in the models you already
-had) auto-sets `flagged=True` when score ≤ 2, but it never auto-clears
-`flagged` back to `False` if you later rescore something higher. That's
-deliberate — the original model docstring says a manager should be able to
-flag something outside the normal threshold — but it means re-submitting a
-better score on a previously-flagged item won't quietly un-flag it. You'd
-clear that from the admin.
+- **Backend:** Python, Django
+- **Database:** SQLite
+- **Frontend:** HTML, CSS, JavaScript
+- **Templating:** Django Templates
 
-## Reconciling the mockups (decisions I made)
+## Project Structure
 
-Your four HTML files didn't fully agree with each other or with the
-seed data from the earlier session, since they were clearly built across a
-few iterations. Rather than silently picking one version, here's what I
-did and why:
+The project is organized around a Django backend, templates, static frontend assets, and relational data models.
 
-- **Auditor roster**: the "viewing as" switcher only had Priya/Marcus/Elena,
-  but `manager-side.html`'s table and assignments card also reference Raj
-  Singh, Neha Patel, and Vikram Sharma. I seeded all six. Since the switcher
-  is now a real `{% for a in all_auditors %}` loop instead of three
-  hardcoded buttons, **all six** get a workspace tab now — an upgrade over
-  the static mockup, which had no link to Raj/Neha/Vikram's workspaces at
-  all.
-- **Marcus and Elena had zero audits anywhere** in any mockup. I gave them
-  one placeholder audit each (`IND-BLR-02`, `IND-HYD-01`, both fictional
-  locations) purely so their workspace tab isn't a dead empty state. These
-  two are the only things in the seed data with no mockup source — swap or
-  delete them freely.
-- **IND-CHE-04's due date** is `2026-08-18` in `auditor-side.html` and
-  `form.html`, but `2026-08-11` in `manager-side.html`'s table. I went with
-  `2026-08-18` since two sources agree. Once this is real data there's only
-  one due date, so this class of bug can't recur.
-- **Checklist size**: `auditor-side.html` says "10/10 items scored" for a
-  completed audit, but `form.html` — the only page that actually lists the
-  checklist — has 7 items (3 Safety + 2 Housekeeping + 2 Compliance). I used
-  7, and `items_scored`/`items_total` are now computed from the real
-  checklist rather than typed by hand, so they can't drift from reality
-  again.
-- **The 88% vs 89% thing**: `auditor-side.html` hardcodes Mangaluru
-  Warehouse at "88%". With 7 real checklist items (35 max points), 88%
-  isn't reachable by any combination of integer scores — the nearest is
-  88.6%, which rounds to 89%. That's what you'll see now. It's a good
-  example of exactly what this conversion step is for: a hand-typed number
-  can say anything; a computed one can't quietly be impossible.
-- **"6 audits across 6 locations"** in `manager-side.html`'s subtitle,
-  against 5 visible table rows and a "3/6 completed" stat that doesn't
-  match either — I didn't try to guess the missing 6th audit. The subtitle
-  is now `{{ total_count }} audits across {{ locations_count }} locations`,
-  so whatever's actually in the DB is what it says, always accurate by
-  construction instead of by careful typing.
+- `manage.py` — Django project entry point
+- `audittrail/` — Django project configuration
+- `audits/` — Audit application containing models, views, forms, URLs, and business logic
+- `templates/` — HTML templates
+- `static/` — CSS and JavaScript assets
+- `requirements.txt` — Python dependencies
 
-None of this needed a decision from you to keep moving, but flagging it
-since a couple of these (roster, due date) are worth a quick sanity check
-against whatever you intended.
+## Data Model
 
-## Still not wired up (out of scope for this pass)
+The application uses a relational model to represent the audit workflow.
 
-- **Save draft** vs **Submit report** are both handled, but there's no
-  autosave or "you have unsaved changes" warning — it's a plain form POST.
-- **Photo upload** is a real `<input type="file">` now (styled to look
-  like the original decorative button) and sets `has_photo=True` on save,
-  file lands in `media/`. There's no thumbnail preview on the form itself.
-- **Search / status filter** on the manager dashboard table are still just
-  static `<input>`/`<select>` elements with no JS or server-side filtering
-  wired in — visually present, not functional yet.
-- No audit_detail/report mockup existed anywhere in your four HTML files,
-  so I designed that page from scratch to match the rest of the app's look
-  (navy header, card/badge patterns) rather than inventing a different
-  visual language for it.
+User → UserProfile → Auditor
 
-## Run it locally and click through everything
+Auditor → Audit
 
-```bash
-python manage.py runserver
-```
+Location → Audit
 
-1. Log in as `manager` → dashboard shows real stats, table, flagged issues.
-2. Click an auditor → their workspace, tasks, "viewing as" switcher.
-3. Open a task's form → score items, add remarks, save a draft.
-4. Come back, finish scoring, hit Submit report.
-5. Back on the dashboard: completed count, flagged count, and score all
-   reflect what you just did.
-6. Log out, log in as e.g. `priya` → confirm she only ever sees her own
-   workspace, even if you paste another auditor's URL into the bar.
+AuditTemplate → ChecklistItem
 
-That loop is the real finish line, and it's already working end to end —
-I ran it via curl during the build (login, dashboard, workspace, form GET,
-form POST, resulting DB state, and the auditor-can't-see-another-auditor
-check) rather than just eyeballing the code.
+Audit → AuditResponse
+
+The main entities are:
+
+- **Auditor** — employee responsible for conducting audits
+- **Location** — site being audited
+- **AuditTemplate** — reusable audit/checklist template
+- **ChecklistItem** — individual requirement within a template
+- **Audit** — an assigned audit instance
+- **AuditResponse** — score, remarks, and evidence associated with a checklist item
+
+## Audit Workflow
+
+1. Manager selects a location.
+2. Manager selects an auditor.
+3. Manager assigns an audit.
+4. Auditor opens the assigned audit.
+5. Auditor completes the checklist.
+6. Auditor adds scores, remarks, and evidence.
+7. Auditor saves the audit as a draft or submits it.
+8. The completed audit becomes available for review.
+9. Manager reviews compliance scores and flagged issues.
+
+## Compliance Scoring
+
+Each checklist item is scored on a 1–5 scale.
+
+Low-scoring items are automatically flagged for attention.
+
+The overall compliance score is calculated from the submitted checklist responses.
+
+## Getting Started
+
+### 1. Clone the repository
+
+    git clone <repository-url>
+    cd auditrail
+
+### 2. Create a virtual environment
+
+#### Windows
+
+    python -m venv venv
+    venv\Scripts\activate
+
+#### macOS / Linux
+
+    python3 -m venv venv
+    source venv/bin/activate
+
+### 3. Install dependencies
+
+    pip install -r requirements.txt
+
+### 4. Apply migrations
+
+    python manage.py migrate
+
+### 5. Start the development server
+
+    python manage.py runserver
+
+Open the local development server shown in the terminal.
+
+## Project Status
+
+**MVP / Development**
+
+The core manager and auditor workflows are implemented. The project is intended as a practical demonstration of building a business-oriented web application with Django, relational data modelling, server-rendered interfaces, and JavaScript-based frontend interactions.
+
+## Future Improvements
+
+Potential future improvements include:
+
+- PostgreSQL deployment
+- More extensive automated testing
+- Advanced audit filtering and reporting
+- Data visualisation and historical compliance trends
+- Improved API architecture
+- Production deployment
+- Enhanced file and photo management
+
+## Author
+
+**Aakrit Singh**
+
+Built as a practical full-stack web development project.
