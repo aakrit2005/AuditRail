@@ -1,4 +1,4 @@
-# AudiTrail — Django app
+# AudiTrail
 
 Full loop: login → manager dashboard → auditor workspace → checklist form →
 submit → shows back up on the dashboard. Built on top of the DB layer from
