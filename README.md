@@ -4,7 +4,7 @@ AuditTrail is a web-based field audit management system designed to manage audit
 
 The project models a real-world audit workflow where managers assign audits to auditors, auditors complete structured checklists, and managers can monitor compliance and audit status from a central dashboard.
 
-#In Action
+## In Action
 <img width="800" alt="image" src="https://github.com/user-attachments/assets/b946504c-7e6b-45ba-9e59-ea3480241190" />
 <img width="800" alt="image" src="https://github.com/user-attachments/assets/cfc15848-099f-464a-8603-981cd910e546" />
 <img width="800"  alt="image" src="https://github.com/user-attachments/assets/a53c99ea-54da-45c1-b534-6a95c85b2779" />
