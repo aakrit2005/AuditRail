@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuditRail</title>
+    <link rel="stylesheet" href="{% static 'audits/css/base.css' %}">
+    {% block extra_css %}{% endblock %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    {% block nav %}
+    <nav class="navigation">
+        <img class="top_logo" src="{% static 'audits/images/logo_nav_white.png' %}" alt="Auditrail logo">
+        {% if nav_links %}
+            <a href="{% url 'manager_dashboard' %}" {% if active_nav == 'dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
+            <a href="{{ nav_audits_url }}" {% if active_nav == 'audits' %}aria-current="page"{% endif %}>Audits</a>
+            <a href="{% url 'assign_task' %}" {% if active_nav == 'auditors' %}aria-current="page"{% endif %}>Auditors</a>
+        {% endif %}
+        {% if user.is_authenticated %}
+            <form method="post" action="{% url 'logout' %}" style="margin-left:auto; display:inline;">
+                {% csrf_token %}
+                <button type="submit" style="background:none; border:none; font:inherit; cursor:pointer; color:white; opacity:0.6; padding:8px 16px;">Log out ({{ user.username }})</button>
+            </form>
+        {% endif %}
+    </nav>
+    {% endblock %}
+
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</body>
+</html>

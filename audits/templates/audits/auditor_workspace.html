@@ -1,0 +1,168 @@
+{% extends "audits/base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'audits/css/workspace.css' %}">{% endblock %}
+
+{% block content %}
+<div class="auditorpage">
+
+    {% if can_switch %}
+    <div class="auditor-switcher">
+        <span class="switcher-label">VIEWING AS</span>
+        <div class="switcher-tabs">
+            {% for a in all_auditors %}
+            <a class="switcher-tab {% if a.id == auditor.id %}active{% endif %}"
+               href="{% url 'auditor_workspace' a.id %}">{{ a.first_name }}</a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="headline">
+        <p>FIELD AUDITING</p>
+        <h1>Auditor workspace</h1>
+        <p>Assigned locations and open audit tasks for the current cycle.</p>
+    </div>
+
+    <div class="auditor-workspace-card">
+        <div class="card-section profile-section">
+            <div class="avatar-large">{{ auditor.initials }}</div>
+            <div class="profile-text">
+                <div class="profile-name">{{ auditor.name }}</div>
+                <div class="profile-region">{{ auditor.region }} region</div>
+            </div>
+        </div>
+
+        <div class="card-section">
+            <div class="section-label">Assigned locations</div>
+            <div class="location-list">
+                {% for location_name in locations %}
+                <div class="location-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pin-icon">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    {{ location_name }}
+                </div>
+                {% empty %}
+                <div class="location-item">No locations assigned yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card-section">
+            <div class="section-label">Cycle progress</div>
+            <div class="progress-number">{{ submitted_count }}/{{ total_count }}</div>
+            <div class="progress-subtext">audits submitted</div>
+        </div>
+    </div>
+
+    <div style="margin: 24px 0; display: flex; gap: 12px; align-items: center;">
+        <input type="text" id="task-search" placeholder="Search locations, IDs, templates..." style="flex: 1; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;">
+        <select id="status-filter" style="padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background-color: white;">
+            <option value="all">All statuses</option>
+            <option value="completed">Completed</option>
+            <option value="in-progress">In progress</option>
+            <option value="pending">Pending</option>
+        </select>
+    </div>
+
+    <div class="task-list-container">
+        {% for task in tasks %}
+        <div class="task-card filterable-task" data-status="{{ task.status|lower }}">
+            <div class="task-info">
+                <div class="task-header">
+                    <h3 class="task-title">{{ task.location.name }} · {{ task.location.client_name }}</h3>
+                    <span class="badge badge-{{ task.status }}"><span class="dot"></span> {{ task.get_status_display }}</span>
+                </div>
+                <div class="task-meta">{{ task.code }} · {{ task.template.name }}</div>
+                <div class="task-details">
+                    <div class="task-detail-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="detail-icon">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        Due {{ task.due_date }}
+                    </div>
+                    <div class="task-detail-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="detail-icon">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                            <path d="M9 14h6"></path>
+                            <path d="M9 18h6"></path>
+                            <path d="M9 10h.01"></path>
+                        </svg>
+                        {{ task.items_scored }}/{{ task.items_total }} items scored
+                    </div>
+                </div>
+            </div>
+            <div class="task-score-container">
+                {% if task.score_percent is not None %}
+                <div class="score">
+                    <span>{{ task.score_percent }}%</span>
+                    <div class="score-bar">
+                        <div class="score-fill" style="width: {{ task.score_percent }}%;"></div>
+                    </div>
+                </div>
+                {% else %}
+                <span class="score-dash">—</span>
+                {% endif %}
+            </div>
+            <div class="task-actions">
+                <a class="btn btn-outline" href="{% url 'audit_detail' task.code %}">Report</a>
+                {% if task.status == 'completed' %}
+                <a class="btn btn-primary" href="{% url 'audit_form' task.code %}">Amend</a>
+                {% else %}
+                <a class="btn btn-primary" href="{% url 'audit_form' task.code %}">Open form</a>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <p>No audits assigned yet.</p>
+        {% endfor %}
+    </div>
+    <p id="no-results-message" style="display: none; text-align: center; padding: 2rem 0; color: #64748b;">No matching tasks found.</p>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('task-search');
+    const statusFilter = document.getElementById('status-filter');
+    const taskCards = document.querySelectorAll('.filterable-task');
+    const noResultsMsg = document.getElementById('no-results-message');
+
+    function filterTasks() {
+        if (taskCards.length === 0) return;
+
+        const searchTerm = searchInput.value.toLowerCase();
+        const statusTerm = statusFilter.value.toLowerCase();
+        let visibleCount = 0;
+
+        taskCards.forEach(card => {
+            const cardText = card.textContent.toLowerCase();
+            const cardStatus = card.dataset.status;
+            
+            const matchesSearch = cardText.includes(searchTerm);
+            const matchesStatus = statusTerm === 'all' || cardStatus === statusTerm;
+
+            if (matchesSearch && matchesStatus) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        if (noResultsMsg) {
+            noResultsMsg.style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+    }
+
+    if (searchInput && statusFilter) {
+        searchInput.addEventListener('input', filterTasks);
+        statusFilter.addEventListener('change', filterTasks);
+    }
+});
+</script>
+{% endblock %}

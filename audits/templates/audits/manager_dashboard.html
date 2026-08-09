@@ -1,0 +1,257 @@
+{% extends "audits/base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'audits/css/dashboard.css' %}">{% endblock %}
+
+{% block content %}
+<div class="managerpage">
+
+    <div class="headline">
+        <p>COMPLIANCE OPERATIONS</p>
+        <h1>Audit Programme Overview</h1>
+        <p>{{ total_count }} audit{{ total_count|pluralize }} across {{ locations_count }} location{{ locations_count|pluralize }}</p>
+    </div>
+
+    <div class="overview">
+        <div class="card">
+            <div class="card-header">
+                <span class="status-title text-green">Completed</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="svg-icon icon-green" viewBox="0 0 20 20" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="card-value">{{ completed_count }}/{{ total_count }}</div>
+            <div class="card-subtext">Submitted and signed off</div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="status-title text-orange">In Progress</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="svg-icon icon-orange" viewBox="0 0 512 512" aria-hidden="true">
+                    <path d="M464 256a208 208 0 1 1 -416 0 208 208 0 1 1 416 0zM0 256a256 256 0 1 0 512 0 256 256 0 1 0 -512 0zM232 120l0 136c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2 280 120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/>
+                </svg>
+            </div>
+            <div class="card-value">{{ draft_count }}</div>
+            <div class="card-subtext">Drafts saved by auditors</div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="status-title text-blue">Average Score</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="svg-icon" viewBox="0 0 512 512" aria-hidden="true">
+                    <path d="M64 64c0-17.7-14.3-32-32-32S0 46.3 0 64L0 400c0 44.2 35.8 80 80 80l400 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L80 416c-8.8 0-16-7.2-16-16L64 64zm96 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l96 0c17.7 0 32-14.3 32-32s14.3 32 32 32l-96 0zm64 112c-17.7 0-32 14.3-32 32s14.3 32 32 32l128 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-128 0zM384 288c-17.7 0-32 14.3-32 32s14.3 32 32 32l64 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-64 0z"/>
+                </svg>
+            </div>
+            <div class="card-value">{{ avg_score|default_if_none:"—" }}{% if avg_score is not None %}%{% endif %}</div>
+            <div class="card-subtext">Across completed audits</div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="status-title text-red">Flagged Issues</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="svg-icon icon-red" viewBox="0 0 512 512" aria-hidden="true">
+                    <path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-192a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm0-192c-18.2 0-32.7 15.5-31.4 33.7l7.4 104c.9 12.6 11.4 22.3 23.9 22.3 12.6 0 23-9.7 23.9-22.3l7.4-104c1.3-18.2-13.1-33.7-31.4-33.7z"/>
+                </svg>
+            </div>
+            <div class="card-value">{{ flagged_count }}</div>
+            <div class="card-subtext">Checklist items scored below 3</div>
+        </div>
+    </div>
+
+    <div class="chart-container" style="margin-top: 2rem; margin-bottom: 2rem; height: 300px;">
+        <canvas id="complianceChart"></canvas>
+    </div>
+
+    <div class="audit-activity">
+        <h2>All Audits</h2>
+        <div class="filters">
+            <label for="audit-search" class="sr-only">Search by location, auditor, or ID</label>
+            <input id="audit-search" type="text" placeholder="Search location, auditor, ID">
+            <label for="status-filter" class="sr-only">Filter by status</label>
+            <select id="status-filter">
+                <option value="all">All statuses</option>
+                <option value="completed">Completed</option>
+                <option value="in-progress">In progress</option>
+                <option value="pending">Pending</option>
+            </select>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table class="activity-table">
+            <thead>
+                <tr>
+                    <th scope="col">Audit</th>
+                    <th scope="col">Auditor</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Score</th>
+                    <th scope="col">Flags</th>
+                    <th scope="col">Due</th>
+                    <th scope="col"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for audit in audits %}
+                <tr class="audit-table-row" data-status="{{ audit.status|lower }}">
+                    <td>
+                        <div class="audit-name">{{ audit.location.name }} · {{ audit.location.client_name }}</div>
+                        <div class="audit-meta">ID: {{ audit.code }} · {{ audit.template.name }}</div>
+                    </td>
+                    <td>{{ audit.auditor.name }}</td>
+                    <td>
+                        <span class="badge badge-{{ audit.status }}"><span class="dot"></span> {{ audit.get_status_display }}</span>
+                    </td>
+                    <td>
+                        {% if audit.score_percent is not None %}
+                            <div class="score {% if audit.score_percent >= 80 %}score-good{% elif audit.score_percent >= 50 %}score-warn{% else %}score-bad{% endif %}">
+                                <span>{{ audit.score_percent }}%</span>
+                                <div class="score-bar">
+                                    <div class="score-fill" style="width: {{ audit.score_percent }}%;"></div>
+                                </div>
+                            </div>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if audit.flagged_count %}
+                            <span class="flag-count">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                {{ audit.flagged_count }}
+                            </span>
+                        {% else %}
+                            <span class="flag-none">0</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ audit.due_date }}</td>
+                    <td><a href="{% url 'audit_detail' audit.code %}" class="view-link">View &nearr;</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7">No audits yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p id="no-results-message" style="display: none; text-align: center; padding: 2rem 0; color: #64748b;">No matching audits found.</p>
+    </div>
+
+    {% if flagged_responses %}
+    <div class="issues-list">
+        <h2 style="margin: 0 0 10px 0; font-size: 18px; color: #0f172a;">Flagged issues</h2>
+        {% for response in flagged_responses %}
+        <div class="issues">
+            <h3 class="issue-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="warning-icon" aria-hidden="true">
+                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {{ response.checklist_item.label }}
+            </h3>
+            <p class="codeline">{{ response.audit.location.name }} · {{ response.audit.code }} · score {{ response.score }}/5</p>
+            <p class="issue-desc">{{ response.remark|default:"(No description text provided for this issue)" }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="assignments-card">
+        <h2 class="assignments-title">Auditor assignments</h2>
+        {% for auditor in auditors %}
+        <div class="assignment-row">
+            <div class="auditor-info">
+                <div class="avatar">{{ auditor.initials }}</div>
+                <div class="auditor-details">
+                    <div class="auditor-name">{{ auditor.name }}</div>
+                    <div class="auditor-meta">
+                        {{ auditor.region }}{% if auditor.primary_location %} · {{ auditor.primary_location.location.name }}{% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="assignment-badge">{{ auditor.open_count }} open</div>
+        </div>
+        {% empty %}
+        <p>No auditors yet.</p>
+        {% endfor %}
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('complianceChart').getContext('2d');
+    const labels = {{ location_labels|safe }};
+    const data = {{ location_scores|safe }};
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Compliance Score (%)',
+                data: data,
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Average Compliance Score by Location',
+                    font: {
+                        size: 16
+                    }
+                }
+            }
+        }
+    });
+
+    const searchInput = document.getElementById('audit-search');
+    const statusFilter = document.getElementById('status-filter');
+    const tableRows = document.querySelectorAll('.audit-table-row');
+    const noResultsMsg = document.getElementById('no-results-message');
+
+    function filterTable() {
+        if (tableRows.length === 0) return;
+
+        const searchTerm = searchInput.value.toLowerCase();
+        const statusTerm = statusFilter.value.toLowerCase();
+        let visibleCount = 0;
+
+        tableRows.forEach(row => {
+            const rowText = row.textContent.toLowerCase();
+            const rowStatus = row.dataset.status.toLowerCase();
+            
+            const matchesSearch = rowText.includes(searchTerm);
+            const matchesStatus = statusTerm === 'all' || rowStatus === statusTerm;
+
+            if (matchesSearch && matchesStatus) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        noResultsMsg.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+
+    if (searchInput && statusFilter) {
+        searchInput.addEventListener('input', filterTable);
+        statusFilter.addEventListener('change', filterTable);
+    }
+});
+</script>
+{% endblock %}

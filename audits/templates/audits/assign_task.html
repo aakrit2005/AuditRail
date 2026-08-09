@@ -1,0 +1,91 @@
+{% extends "audits/base.html" %}
+{% load static %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'audits/css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'audits/css/form.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="managerpage">
+    <div class="headline">
+        <p>COMPLIANCE OPERATIONS</p>
+        <h1>Assign a new audit</h1>
+        <p>Pick an auditor below, or straight from the dropdown.</p>
+    </div>
+
+    <div class="assignments-card" style="max-width:520px;margin:0 0 24px 15px;">
+        <h2 class="assignments-title">Quick pick</h2>
+        {% for a in auditors %}
+        <a href="?auditor={{ a.id }}" class="assignment-row" style="text-decoration:none;color:inherit;">
+            <div class="auditor-info">
+                <div class="avatar">{{ a.initials }}</div>
+                <div class="auditor-details">
+                    <div class="auditor-name">{{ a.name }}</div>
+                    <div class="auditor-meta">{{ a.region }}</div>
+                </div>
+            </div>
+            <div class="assignment-badge">Assign &rarr;</div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="card" style="max-width:520px;margin:0 0 24px 15px;">
+        <form method="post">
+            {% csrf_token %}
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:var(--color-text-secondary);margin-bottom:4px;">Auditor</label>
+                <select name="auditor" required style="width:100%;padding:8px;border:1px solid var(--color-border);border-radius:6px;">
+                    {% for a in auditors %}
+                    <option value="{{ a.id }}" {% if preselected_auditor == a.id|stringformat:"s" %}selected{% endif %}>{{ a.name }} ({{ a.region }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:var(--color-text-secondary);margin-bottom:4px;">Location</label>
+                <select name="location" required style="width:100%;padding:8px;border:1px solid var(--color-border);border-radius:6px;">
+                    {% for l in locations %}<option value="{{ l.id }}">{{ l.name }} · {{ l.client_name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:var(--color-text-secondary);margin-bottom:4px;">Checklist template</label>
+                <select name="template" required style="width:100%;padding:8px;border:1px solid var(--color-border);border-radius:6px;">
+                    {% for t in templates %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:var(--color-text-secondary);margin-bottom:4px;">Audit code</label>
+                <input type="text" name="code" placeholder="e.g. IND-MLR-02" required style="width:100%;padding:8px;border:1px solid var(--color-border);border-radius:6px;">
+            </div>
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:var(--color-text-secondary);margin-bottom:4px;">Due date</label>
+                <input type="date" name="due_date" required style="width:100%;padding:8px;border:1px solid var(--color-border);border-radius:6px;">
+            </div>
+            <button type="submit" class="btn-action btn-submit">Assign task</button>
+        </form>
+    </div>
+
+    <div class="audit-activity">
+        <h2>Recently assigned</h2>
+    </div>
+    <div class="table-wrapper">
+        <table class="activity-table">
+            <thead><tr><th>Audit</th><th>Auditor</th><th>Status</th><th>Due</th></tr></thead>
+            <tbody>
+                {% for audit in recent_audits %}
+                <tr>
+                    <td>
+                        <div class="audit-name">{{ audit.location.name }} · {{ audit.location.client_name }}</div>
+                        <div class="audit-meta">ID: {{ audit.code }} · {{ audit.template.name }}</div>
+                    </td>
+                    <td>{{ audit.auditor.name }}</td>
+                    <td><span class="badge badge-{{ audit.status }}"><span class="dot"></span> {{ audit.get_status_display }}</span></td>
+                    <td>{{ audit.due_date }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4">No audits yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

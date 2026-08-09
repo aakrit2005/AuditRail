@@ -1,0 +1,56 @@
+{% extends "audits/base.html" %}
+{% load static %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'audits/css/form.css' %}">
+<link rel="stylesheet" href="{% static 'audits/css/detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="detailpage">
+    <div class="detail-container">
+        <a href="{% url 'auditor_workspace' audit.auditor_id %}" class="return">Back to workspace</a>
+
+        <div class="headline" style="max-width:none;margin:0;">
+            <p>Audit report</p>
+            <h1>{{ audit.location.name }}</h1>
+            <p>{{ audit.code }} · {{ audit.template.name }} · Auditor {{ audit.auditor.name }}</p>
+        </div>
+
+        <div class="detail-summary">
+            <div>
+                <span class="badge badge-{{ audit.status }}"><span class="dot"></span> {{ audit.get_status_display }}</span>
+                <div class="detail-summary-meta">
+                    Due {{ audit.due_date }}{% if audit.submitted_at %} · submitted {{ audit.submitted_at|date:"Y-m-d H:i" }}{% endif %}
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div class="detail-score">{% if audit.score_percent is not None %}{{ audit.score_percent }}%{% else %}—{% endif %}</div>
+                <div class="detail-score-label">{{ audit.items_scored }}/{{ audit.items_total }} items scored</div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            {% for item in items %}
+            <div class="detail-item">
+                <div>
+                    <p class="detail-item-title">{{ item.label }}</p>
+                    {% if item.response %}
+                        {% if item.response.remark %}<p class="detail-item-remark">"{{ item.response.remark }}"</p>{% endif %}
+                        {% if item.response.has_photo %}<p class="detail-item-remark">📎 Photo attached</p>{% endif %}
+                    {% else %}
+                        <p class="detail-item-unanswered">Not yet answered.</p>
+                    {% endif %}
+                </div>
+                {% if item.response and item.response.score is not None %}
+                    <div class="detail-item-score">{{ item.response.score }}/5</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if audit.status != 'completed' %}
+        <a class="btn-action btn-submit" style="align-self:flex-start;text-decoration:none;" href="{% url 'audit_form' audit.code %}">Continue checklist</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

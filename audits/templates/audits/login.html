@@ -1,0 +1,37 @@
+{% extends "audits/base.html" %}
+{% load static %}
+{% block nav %}
+<nav class="navigation">
+    <img class="top_logo" src="{% static 'audits/images/logo_nav_white.png' %}" alt="Auditrail logo">
+</nav>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:340px;margin:60px auto;">
+    <div class="headline" style="max-width:none;margin:0 0 20px 0;">
+        <p>AuditRail</p>
+        <h1>Log in</h1>
+    </div>
+    <div style="background:#fff;border:1px solid var(--color-border);border-radius:10px;padding:24px;">
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:var(--color-text-secondary);margin-bottom:4px;">{{ field.label }}</label>
+                {{ field }}
+            </div>
+            {% endfor %}
+            {% if form.errors %}
+            <p style="color:var(--color-red);font-size:13px;">Wrong username or password.</p>
+            {% endif %}
+            <button type="submit" style="width:100%;padding:10px;border:none;border-radius:6px;background:var(--color-navy);color:#fff;font-weight:600;cursor:pointer;">Log in</button>
+        </form>
+    </div>
+</div>
+<style>
+input[type="text"], input[type="password"] {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--color-border);
+    border-radius: 6px; font-family: inherit; font-size: 14px;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends "audits/base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'audits/css/form.css' %}">{% endblock %}
+
+{% block content %}
+<main class="main-container">
+    <a href="{% url 'auditor_workspace' audit.auditor_id %}" class="return">Back to Dashboard</a>
+    <div class="headline">
+        <p>Audit submission</p>
+        <h1>{{ audit.location.name }}</h1>
+        <p>{{ audit.code }} · {{ audit.template.name }} · Auditor {{ audit.auditor.name }} · due {{ audit.due_date }}</p>
+        <h3 style="margin-top: 10px; color: #2563eb;">Current Compliance Score: <span id="live-total-score">0%</span></h3>
+    </div>
+
+    <form id="audit-form" method="post" enctype="multipart/form-data" action="{% url 'audit_form' audit.code %}">
+        {% csrf_token %}
+
+        <div class="form-action-buttons">
+            <button type="submit" name="save_draft" class="btn-action btn-draft">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Save draft
+            </button>
+            <button type="submit" name="submit_report" class="btn-action btn-submit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                Submit report
+            </button>
+        </div>
+
+        <div class="audit-form-container">
+            {% for section, items in sections.items %}
+            <div class="audit-section">
+                <h2 class="section-header">{{ section }}</h2>
+
+                {% for item in items %}
+                <div class="audit-item checklist-item-row" style="transition: border-left 0.2s ease;">
+                    <div class="item-top">
+                        <p class="item-title">{{ item.label }}</p>
+                        <div class="score-group">
+                            {% for value in score_range %}
+                            <input type="radio" class="score-input" id="q{{ item.id }}-score{{ value }}" name="score_{{ item.id }}" value="{{ value }}"
+                                {% if item.response.score == value %}checked{% endif %}>
+                            <label for="q{{ item.id }}-score{{ value }}" class="score-label">{{ value }}</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <p class="flag-warning" style="display: none; color: #ef4444; font-size: 0.875rem; margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline; vertical-align: text-bottom;">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        This item requires attention. Please explain the issue below.
+                    </p>
+
+                    <textarea class="remarks-input" name="remark_{{ item.id }}" placeholder="Optional remarks">{{ item.response.remark|default:"" }}</textarea>
+                    <label class="photo-upload-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="photo-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                        <span>{% if item.response.has_photo %}Photo attached — replace{% else %}Attach photo{% endif %}</span>
+                        <input type="file" name="photo_{{ item.id }}" accept="image/*">
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </form>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('audit-form');
+    const scoreInputs = document.querySelectorAll('.score-input');
+    const totalScoreDisplay = document.getElementById('live-total-score');
+    const allItems = document.querySelectorAll('.checklist-item-row');
+    let isDirty = false;
+
+    form.addEventListener('input', () => { isDirty = true; });
+    window.addEventListener('beforeunload', (e) => {
+        if (isDirty) {
+            e.preventDefault();
+            e.returnValue = ''; 
+        }
+    });
+    
+    form.addEventListener('submit', () => { isDirty = false; });
+
+    function updateAuditState() {
+        let totalScore = 0;
+        let maxPossible = allItems.length * 5; 
+
+        allItems.forEach(row => {
+            const checkedInput = row.querySelector('.score-input:checked');
+            const remarkInput = row.querySelector('.remarks-input');
+            const flagWarning = row.querySelector('.flag-warning');
+
+            if (checkedInput) {
+                const score = parseInt(checkedInput.value) || 0;
+                totalScore += score;
+
+                if (score <= 2) {
+                    row.classList.add('flagged-item');
+                    row.style.borderLeft = '4px solid #ef4444';
+                    if (flagWarning) flagWarning.style.display = 'block';
+                    
+                    if (remarkInput) {
+                        remarkInput.setAttribute('required', 'true');
+                        remarkInput.placeholder = "Required: Please explain the issue...";
+                    }
+                } else {
+                    row.classList.remove('flagged-item');
+                    row.style.borderLeft = 'none';
+                    if (flagWarning) flagWarning.style.display = 'none';
+                    
+                    if (remarkInput) {
+                        remarkInput.removeAttribute('required');
+                        remarkInput.placeholder = "Optional remarks";
+                    }
+                }
+            }
+        });
+
+        if (maxPossible > 0) {
+            const percentage = Math.round((totalScore / maxPossible) * 100);
+            if (totalScoreDisplay) totalScoreDisplay.textContent = `${percentage}%`;
+        }
+    }
+
+    scoreInputs.forEach(input => {
+        input.addEventListener('change', updateAuditState);
+    });
+
+    updateAuditState();
+});
+</script>
+{% endblock %}
